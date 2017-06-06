@@ -45,7 +45,8 @@ select name,
 DATE_FORMAT(start, '%Y-%m-%d') as start 
 from games
 where YEAR(start)=2011 or YEAR(start)=2012
-limit 50;
+order by start,name
+limit 50
 -- -----------13------------------
 select user_name,
 SUBSTRING_INDEX(email,'@',-1) as `Email Provider`
