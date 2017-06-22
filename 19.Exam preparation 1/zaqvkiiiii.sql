@@ -126,7 +126,17 @@ on l.id=u.location_id
 where u.location_id is null
 order by u.id asc
 ---------------12------------
-
+select c.customer_id,concat(c.first_name,' ',c.last_name)as full_name,price as ticket_price,a.airport_name as destination
+from customers as c
+join tickets as t
+on t.customer_id=c.customer_id
+join flights as f
+on f.flight_id=t.flight_id
+join airports as a
+on f.destination_airport_id=a.airport_id
+where f.`status`='Delayed'
+order by price desc,c.customer_id asc 
+limit 3;
 ---------------13------------
 select u.nickname,c.title,l.latitude,l.longitude
 from users as u
@@ -136,17 +146,47 @@ join chats as c on c.id=uc.chat_id
 where (latitude between 41.139999 and 44.129999) and (longitude between 22.209999 and 28.359999)
 order by c.title asc
 ---------------14------------
-
+select distinct c.customer_id,concat(c.first_name,' ',c.last_name)as full_name,TIMESTAMPDIFF(YEAR, c.date_of_birth, '2016-12-31') as age
+from customers as c
+join tickets as t
+on t.customer_id=c.customer_id
+join flights as f
+on f.flight_id=t.flight_id
+where status='Arrived' and TIMESTAMPDIFF(YEAR, c.date_of_birth, '2016-12-31') < 21
+order by age desc,c.customer_id asc
 ---------------15------------
-
+select a.airport_id,a.airport_name,count(t.ticket_id) as passengers 
+from airports as a
+   join flights as f on a.airport_id=f.origin_airport_id
+   join tickets as t on f.flight_id=t.flight_id
+where f.status='Departing' 
+group by a.airport_id,a.airport_name
+having count(t.ticket_id) > 0
+order by a.airport_id;
 ---------------16------------
 
 ---------------17------------
 
 ---------------18------------
+CREATE TRIGGER tr_update_flight_status
 
----------------19------------
-
+BEFORE UPDATE
+ON `flights`
+FOR EACH ROW
+BEGIN
+		IF
+		old.`status` NOT IN ('Cancelled', 'Arrived')
+		AND new.`status` = 'Arrived'
+	THEN
+		INSERT INTO `arrived_flights` (`flight_id`, `arrival_time`, `origin`, `destination`, `passengers`)
+		VALUES (old.flight_id, new.arrival_time, 
+				(SELECT a.airport_name FROM airports AS a WHERE a.airport_id = new.origin_airport_id),
+				(SELECT a.airport_name FROM `airports` AS a WHERE a.airport_id = new.destination_airport_id),
+				(SELECT COUNT(*) FROM tickets AS t
+								 WHERE t.flight_id = old.flight_id));
+	END IF;
+	
+END 
 
 
 

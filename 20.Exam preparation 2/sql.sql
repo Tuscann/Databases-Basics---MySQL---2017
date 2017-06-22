@@ -53,7 +53,8 @@ create table users_chats(
 );
 -------2----------------
 insert into messages(content, sent_on, chat_id, user_id)
-SELECT concat(concat(concat(u.age, '-', u.gender), '-', l.latitude), '-', l.longitude), '2016-12-15', if(u.gender = 'F', ceil(sqrt(u.age * 2)), round(pow(u.age / 18, 3), 0)), u.id
+SELECT concat(concat(concat(u.age, '-', u.gender), '-', l.latitude), '-', l.longitude), '2016-12-15', 
+if(u.gender = 'F', ceil(sqrt(u.age * 2)), round(pow(u.age / 18, 3), 0)), u.id
 from users as `u`
 join locations as `l`
 on l.id = u.location_id
@@ -61,8 +62,8 @@ where u.id between 10 and 20;
 -------3----------------
 update chats
 join messages
-on messages.chat_id=chats.id
-set start_date=sent_on
+on messages.chat_id = chats.id
+set start_date = sent_on
 where start_date>sent_on
 -------4----------------
 DELETE FROM locations
@@ -79,10 +80,11 @@ from users
 where age>=22 and age<=37
 order by id asc
 -------6----------------
-select nickname,gender,age
-from users
-where age>=22 and age<=37
-order by id asc
+select content,sent_on
+from messages
+where date(sent_on)>'2014-05-12'
+and content like'%just%'
+order by id desc
 -------7----------------
 select title,is_ACTIVE
 from chats
@@ -111,7 +113,7 @@ select nickname,email,password
 from credentials as c
 join users as u
 on c.id=u.credential_id
-where email like '%ço.uk'
+where email like '%co.uk'
 order by email asc
 -------11----------------
 select u.id,u.nickname,u.age
@@ -120,8 +122,16 @@ right join users as u
 on l.id=u.location_id
 where u.location_id is null
 order by u.id asc
--------12----------------
 
+SELECT u.id, u.nickname, u.age FROM users AS u
+WHERE u.location_id IS NULL
+ORDER BY u.id;
+-------12----------------
+SELECT c.title, m.content FROM messages AS m
+RIGHT JOIN chats AS c
+ON m.chat_id = c.id
+WHERE c.start_date = (SELECT MAX(c.start_date) FROM chats AS c)
+ORDER BY m.sent_on, m.id;
 -------13----------------
 select u.nickname,c.title,l.latitude,l.longitude
 from users as u

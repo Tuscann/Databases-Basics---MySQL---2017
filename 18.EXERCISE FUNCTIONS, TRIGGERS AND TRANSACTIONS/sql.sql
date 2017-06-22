@@ -23,7 +23,15 @@ BEGIN
     ORDER BY t.name;
 END
 -------------------4----------------- 
+CREATE PROCEDURE usp_get_employees_from_town  (input_town VARCHAR(20))
+BEGIN
 
+SELECT e.first_name, e.last_name 
+      FROM employees AS e, towns AS t, addresses AS a
+WHERE input_town = t.name AND t.town_id = a.town_id AND a.address_id = e.address_id
+ORDER BY e.first_name, e.last_name;
+
+END
 -------------------5----------------- 
 DELIMITER $$
 CREATE FUNCTION ufn_get_salary_level(salary DECIMAL(19,4))
@@ -197,7 +205,35 @@ commit;
 END $$ 
 delimiter;
 -------------------15-----------------
+CREATE PROCEDURE usp_transfer_money(from_account_id INT, to_account_id INT, amount DECIMAL(19,4)) 
+BEGIN
+	START TRANSACTION;
+		UPDATE accounts SET balance = balance - amount
+			WHERE id = from_account_id;
+			UPDATE accounts SET balance = balance + amount
+			WHERE id = to_account_id;
+			
+		IF((SELECT COUNT(*) FROM accounts
+		      WHERE id = from_account_id) <> 1)
+		   THEN ROLLBACK;
+		ELSEIF(amount > (SELECT balance FROM accounts WHERE id = from_account_id))
+			THEN ROLLBACK;
+		ELSEIF(amount <= 0)
+			THEN ROLLBACK;
+		ELSEIF((SELECT balance FROM accounts WHERE id = from_account_id) <= 0)
+			THEN ROLLBACK;	
+		ELSEIF((SELECT COUNT(*) FROM accounts
+		      WHERE id = to_account_id) <> 1)
+		   THEN ROLLBACK;
+		ELSEIF(amount <= 0)
+			THEN ROLLBACK;
+		ELSEIF(from_account_id = to_account_id)
+			THEN ROLLBACK;
+		ELSE 
+			COMMIT;
+		END IF;
 
+END
 -------------------16----------------- 
 create table logs 
 (
@@ -216,7 +252,31 @@ BEGIN
 	VALUES (OLD.id, OLD.balance, NEW.balance);
 END
 -------------------17----------------- 
-
+CREATE TABLE logs(
+	log_id INT AUTO_INCREMENT PRIMARY KEY,
+	account_id INT,
+	old_sum DECIMAL(19,4),
+	new_sum DECIMAL(19, 4)
+);
+CREATE TABLE notification_emails(
+	id INT AUTO_INCREMENT PRIMARY KEY,
+	recipient INT,
+	subject VARCHAR(50),
+	body TEXT
+);
+CREATE TRIGGER tr_emails
+AFTER UPDATE
+ON accounts
+FOR EACH ROW 
+BEGIN
+	INSERT INTO logs(account_id, old_sum, new_sum)
+	VALUES(old.id, old.balance, new.balance);
+	INSERT INTO notification_emails(recipient, subject, body)
+	VALUES(
+		old.id,
+		CONCAT_WS(': ', 'Balance change for account', old.id),
+		CONCAT('On ', NOW(), ' your balance was changed from ', old.balance, ' to ', new.balance, '.' ));
+END
 -------------------18----------------- 
 CREATE PROCEDURE usp_buy_item(IN user_id INT, IN item_name VARCHAR(50))
 BEGIN
@@ -327,4 +387,73 @@ BEGIN
                     WHERE u.user_name = 'Stamat' AND g.name = 'Safflower';
     
 END;
--------------------19-----------------  
+-------------------19----------------- 
+
+CREATE PROCEDURE `usp_buy_item`(ug_id INT, u_level INT, i_name VARCHAR(100))
+BEGIN
+	
+    DECLARE i_id INT;
+    DECLARE i_level INT;
+    DECLARE i_price DECIMAL(19, 4);
+    
+    SET i_id := (SELECT `id` FROM `items` WHERE `name` = i_name);
+    SET i_price := (SELECT `price` FROM `items` WHERE `id` = i_id);
+    SET i_level := (SELECT `min_level` FROM `items` WHERE `id` = i_id);
+    
+    IF (u_level >= i_level AND i_id NOT IN (SELECT `item_id` FROM `user_game_items` AS `ugi` WHERE `ugi`.`user_game_id` = ug_id)) THEN
+		START TRANSACTION;
+		INSERT INTO `user_game_items` (`item_id`, `user_game_id`) VALUE (i_id, ug_id);
+		UPDATE `users_games` SET `cash` = `cash` - i_price WHERE `id` = ug_id;
+		IF ((SELECT `cash` FROM `users_games` WHERE `id` = ug_id) < 0) THEN
+			ROLLBACK;
+		ELSE
+			COMMIT;
+		END IF;
+	END IF;    
+
+END;
+
+CREATE PROCEDURE `usp_buy_items_for_alex`()
+BEGIN
+
+	DECLARE u_id INT;
+    DECLARE u_level INT;
+	DECLARE g_id INT;
+	DECLARE ug_id INT;
+    
+    SET u_id := (SELECT `u`.`id` FROM `users` AS `u` WHERE `u`.`user_name` = 'Alex');
+    SET g_id := (SELECT `g`.`id` FROM `games` AS `g` WHERE `g`.`name` = 'Edinburgh');
+    SET ug_id := (SELECT `ug`.`id` FROM `users_games` AS `ug` WHERE u_id = `ug`.`user_id` AND g_id = `ug`.`game_id`);
+    SET u_level := (SELECT `ug`.`level` FROM `users_games` AS `ug` WHERE u_id = `ug`.`user_id` AND g_id = `ug`.`game_id`);
+	
+    CALL usp_buy_item(ug_id, u_level, 'Blackguard');
+	CALL usp_buy_item(ug_id, u_level, 'Bottomless Potion of Amplification');
+	CALL usp_buy_item(ug_id, u_level, 'Eye of Etlich (Diablo III)');
+	CALL usp_buy_item(ug_id, u_level, 'Gem of Efficacious Toxin');
+	CALL usp_buy_item(ug_id, u_level, 'Golden Gorget of Leoric');
+	CALL usp_buy_item(ug_id, u_level, 'Ziggurat Tooth');
+	CALL usp_buy_item(ug_id, u_level, 'The Three Hundredth Spear');
+	CALL usp_buy_item(ug_id, u_level, 'The Short Mans Finger');
+	CALL usp_buy_item(ug_id, u_level, 'Tzo Krins Gaze');
+	CALL usp_buy_item(ug_id, u_level, 'Valtheks Rebuke');
+	CALL usp_buy_item(ug_id, u_level, 'Utars Roar');
+	CALL usp_buy_item(ug_id, u_level, 'Urn of Quickening');
+	CALL usp_buy_item(ug_id, u_level, 'Boots');
+	CALL usp_buy_item(ug_id, u_level, 'Bombardiers Rucksack');
+	CALL usp_buy_item(ug_id, u_level, 'Cloak of Deception');
+	CALL usp_buy_item(ug_id, u_level, 'Hellfire Amulet');
+    
+    SELECT `u`.`user_name`, `g`.`name`, `ug`.`cash`, `i`.`name` 
+    FROM `users` AS `u`
+    JOIN `users_games` AS `ug`
+    ON `ug`.`user_id` = `u`.`id`
+	JOIN `user_game_items` AS `ugi`
+    ON `ug`.`id` = `ugi`.`user_game_id`
+	JOIN `games` AS `g`
+	ON `ug`.`game_id` = `g`.`id` AND `g`.`name` = 'Edinburgh'
+	JOIN `items` AS `i`
+	ON `i`.`id` = `ugi`.`item_id`
+	ORDER BY `i`.`name` ASC;
+END
+
+ 
