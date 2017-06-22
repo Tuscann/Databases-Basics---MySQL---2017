@@ -52,7 +52,12 @@ create table users_chats(
     constraint fk_users_chats_chats foreign key(chat_id) references chats(id)
 );
 -------2----------------
-
+insert into messages(content, sent_on, chat_id, user_id)
+SELECT concat(concat(concat(u.age, '-', u.gender), '-', l.latitude), '-', l.longitude), '2016-12-15', if(u.gender = 'F', ceil(sqrt(u.age * 2)), round(pow(u.age / 18, 3), 0)), u.id
+from users as `u`
+join locations as `l`
+on l.id = u.location_id
+where u.id between 10 and 20;
 -------3----------------
 update chats
 join messages
@@ -60,7 +65,14 @@ on messages.chat_id=chats.id
 set start_date=sent_on
 where start_date>sent_on
 -------4----------------
-
+DELETE FROM locations
+WHERE id IN(
+    SELECT l.id FROM (
+	     SELECT*FROM locations
+		               ) as l
+    LEFT JOIN users AS u
+    ON l.id=u.location_id
+    WHERE u.location_id IS NULL)
 -------5----------------
 select nickname,gender,age
 from users
