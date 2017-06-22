@@ -164,9 +164,36 @@ group by a.airport_id,a.airport_name
 having count(t.ticket_id) > 0
 order by a.airport_id;
 ---------------16------------
-
+CREATE PROCEDURE udp_submit_review(customer_id INT, review_content VARCHAR(255), review_grade INT, airline_name VARCHAR(30))
+BEGIN
+START TRANSACTION;
+IF(SELECT COUNT(a.airline_id) FROM airlines AS a WHERE a.airline_name = airline_name)<>1
+THEN
+SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Airline does not exist.';
+ROLLBACK;
+ELSE 
+INSERT INTO customer_reviews(review_content, review_grade,airline_id,customer_id)
+VALUES (review_content,review_grade , (SELECT a.airline_id FROM airlines AS a WHERE a.airline_name = airline_name), customer_id);
+COMMIT;
+END IF;
+ENd;
 ---------------17------------
-
+CREATE PROCEDURE udp_purchase_ticket(IN customer_id INT, IN flight_id INT, IN ticket_price DECIMAL(8,2), IN class VARCHAR(6), IN seat VARCHAR(5))
+BEGIN
+START TRANSACTION;
+IF (SELECT b.balance FROM customer_bank_accounts AS b WHERE b.customer_id = customer_id) < ticket_price
+THEN 
+	SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Insufficient bank account balance for ticket purchase.';
+	ROLLBACK;
+ELSE
+	INSERT INTO tickets(price,class, seat, customer_id, flight_id)
+	VALUES (ticket_price, class, seat, customer_id, flight_id);
+	UPDATE customer_bank_accounts
+	SET customer_bank_accounts.balance = customer_bank_accounts.balance - ticket_price
+	WHERE customer_bank_accounts.customer_id = customer_id;
+	COMMIT;
+END IF;
+END
 ---------------18------------
 CREATE TRIGGER tr_update_flight_status
 

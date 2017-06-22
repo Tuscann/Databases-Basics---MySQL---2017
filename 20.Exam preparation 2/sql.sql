@@ -142,13 +142,82 @@ where (latitude between 41.139999 and 44.129999) and (longitude between 22.20999
 order by c.title asc
 
 -------14----------------
-
+SELECT c.title, m.content FROM messages AS m
+RIGHT JOIN chats AS c
+ON m.chat_id = c.id
+WHERE c.start_date = (SELECT MAX(c.start_date) FROM chats AS c)
+ORDER BY m.sent_on, m.id;
 -------15----------------
-
+create function udf_get_radians(degrees float) 
+returns float
+begin
+declare result FLOAT;
+set result = (degrees*PI())/180;
+return result;
+end
 -------16----------------
-
+CREATE PROCEDURE udp_change_password(email varchar(30),password varchar(200))
+BEGIN
+start transaction;
+if (email not in(select c.email from credentials as c))
+then signal sqlstate '45000' SET message_text="The email does't exist";
+rollback;
+end if;
+update credentials as c 
+set c.password = password
+where c.email = email;
+commit;
+END
 -------17----------------
-
+CREATE PROCEDURE udp_send_message(in user_id int,in chat_id int,in content varchar(200))
+BEGIN
+start transaction;
+if (user_id not in(select us.user_id 
+                        from users_chats as us
+                        where us.chat_id=chat_id))            
+then signal sqlstate '45000' SET message_text='There is no chat with that user!';
+rollback;
+end if;
+insert into messages (content,sent_on,chat_id,user_id)
+values(content,'2016-12-15',chat_id,user_id);
+commit;
+END
 -------18----------------
+CREATE TABLE messages_log (
+	id INT NOT NULL AUTO_INCREMENT,
+    content VARCHAR(200),
+    sent_on DATE,
+    chat_id INT,
+    user_id INT,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_messages_log_chats FOREIGN KEY (chat_id) REFERENCES chats (id),
+    CONSTRAINT fk_messages_log_users FOREIGN KEY (user_id) REFERENCES users (id)
+);
 
+delimiter $$
+CREATE TRIGGER tr_delete_messages
+AFTER DELETE
+ON messages
+FOR EACH ROW
+BEGIN
+INSERT INTO messages_log(id, content, sent_on, chat_id, user_id)
+VALUES (old.id, old.content, old.sent_on, old.chat_id, old.user_id);	
+END$$
+delimiter;
 -------19----------------
+DELIMITER $$
+CREATE TRIGGER tr_delete_user
+BEFORE DELETE
+ON users
+FOR EACH ROW
+BEGIN
+	DELETE FROM messages WHERE messages.user_id = OLD.id;
+	DELETE FROM users_chats WHERE users_chats.user_id = OLD.id;
+	DELETE FROM messages_log WHERE messages_log.user_id = OLD.id;
+END$$
+DELIMITER ;
+
+!!!!!!!!!!!!!!!!!
+UPDATE -> new old
+INSERT -> new
+DELETE -> old
