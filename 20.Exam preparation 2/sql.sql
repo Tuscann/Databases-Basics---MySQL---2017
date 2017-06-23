@@ -78,18 +78,18 @@ WHERE id IN(
 select nickname,gender,age
 from users
 where age>=22 and age<=37
-order by id asc
+order by id asc;
 -------6----------------
 select content,sent_on
 from messages
 where date(sent_on)>'2014-05-12'
 and content like'%just%'
-order by id desc
+order by id desc;
 -------7----------------
 select title,is_ACTIVE
 from chats
 where (is_active=0 AND LENGTH (title)<5) or(substr(title,3,2)='tl')
-ORDER BY TITLE DESC
+ORDER BY TITLE DESC;
 -------8----------------
 select  c.id,title,m.id
 from chats as c
@@ -98,7 +98,7 @@ on m.chat_id=c.id
 where
 date(sent_on)<'2012-03-26' and
 substr(title,-1,1)='x'
-order by c.id asc,m.id asc
+order by c.id asc,m.id asc;
 -------9----------------
 select c.id,count(*)
 from messages as m

@@ -62,10 +62,8 @@ on l.id = u.location_id
 where u.id between 10 and 20;
 ---------------3------------
 update chats as `c`
-join messages as `m`
-on c.id = m.chat_id
-join users as `u`
-on u.id = m.user_id
+join messages as `m` on c.id = m.chat_id
+join users as `u` on u.id = m.user_id
 set c.start_date = (select min(m.sent_on) from messages as `m` where m.chat_id = c.id)
 where(m.sent_on < c.start_date)
 ---------------4------------
