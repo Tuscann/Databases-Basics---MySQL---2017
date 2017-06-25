@@ -251,3 +251,13 @@ BEGIN
 END
 
 -------- Section 5: Bonus - P01. Delete Trigger ------------
+DELIMITER $$
+CREATE TRIGGER tr_delete_account
+BEFORE DELETE ON accounts
+FOR EACH ROW
+BEGIN
+	DELETE FROM employees_accounts WHERE account_id = OLD.account_id;
+	INSERT INTO account_logs(account_id, account_number, start_date, customer_id)
+	VALUES(OLD.account_id, OLD.account_number, OLD.start_date, OLD.customer_id);
+END $$
+DELIMITER ;
