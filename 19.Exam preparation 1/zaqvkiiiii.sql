@@ -1,4 +1,5 @@
 ---------------1------------
+<<<<<<< Updated upstream
 CREATE TABLE locations (
 	id INT NOT NULL AUTO_INCREMENT,
     latitude FLOAT,
@@ -132,10 +133,164 @@ join flights as f
 on f.flight_id=t.flight_id
 join airports as a
 on f.destination_airport_id=a.airport_id
+=======
+CREATE TABLE towns (
+	town_id INT,
+	town_name VARCHAR(30) NOT NULL,
+	CONSTRAINT pk_towns PRIMARY KEY(town_id)
+);
+
+CREATE TABLE airports (
+	airport_id INT,
+	airport_name VARCHAR(50) NOT NULL,
+	town_id INT NOT NULL,
+	CONSTRAINT pk_airports PRIMARY KEY(airport_id),
+	CONSTRAINT fk_airports_towns FOREIGN KEY(town_id) REFERENCES towns(town_id)
+);
+
+CREATE TABLE airlines (
+	airline_id INT,
+	airline_name VARCHAR(30) NOT NULL,
+	natiONality VARCHAR(30) NOT NULL,
+	rating INT DEFAULT 0,
+	CONSTRAINT pk_airlines PRIMARY KEY(airline_id)
+);
+
+CREATE TABLE flights (
+	flight_id INT AUTO_INCREMENT,
+	departure_time DATETIME NOT NULL,
+	arrival_time DATETIME NOT NULL,
+	status VARCHAR(9) NOT NULL,
+	origin_airport_id INT,
+	destinatiON_airport_id INT,
+	airline_id INT NOT NULL,
+	CONSTRAINT pk_flights PRIMARY KEY(flight_id),
+	CONSTRAINT fk_flights_airports_origin FOREIGN KEY(origin_airport_id) REFERENCES airports(airport_id),
+	CONSTRAINT fk_flights_airports_destinatiON FOREIGN KEY(destinatiON_airport_id) REFERENCES airports(airport_id),
+	CONSTRAINT fk_flights_airlines FOREIGN KEY(airline_id) REFERENCES airlines(airline_id)
+);
+
+CREATE TABLE customers (
+	customer_id INT,
+	first_name VARCHAR(20) NOT NULL,
+	last_name VARCHAR(20) NOT NULL,
+	date_of_birth DATE NOT NULL,
+	gender VARCHAR(1) NOT NULL,
+	home_town_id INT NOT NULL,
+	CONSTRAINT pk_customers PRIMARY KEY(customer_id),
+	CONSTRAINT fk_customers_towns FOREIGN KEY(home_town_id) REFERENCES towns(town_id)
+);
+
+CREATE TABLE tickets (
+	ticket_id INT,
+	price DECIMAL(8,2) NOT NULL,
+	class VARCHAR(6) NOT NULL,
+	seat VARCHAR(5) NOT NULL,
+	customer_id INT NOT NULL,
+	flight_id INT NOT NULL,
+	CONSTRAINT pk_tickets PRIMARY KEY(ticket_id),
+	CONSTRAINT fk_tickets_customers FOREIGN KEY(customer_id) REFERENCES customers(customer_id),
+	CONSTRAINT fk_tickets_flights FOREIGN KEY(flight_id) REFERENCES flights(flight_id)
+);
+---------------2------------
+INSERT INTO flights 
+(departure_time, arrival_time,status,origin_airport_id,destinatiON_airport_id,airline_id)
+SELECT 
+		'2017-06-19 14:00:00',
+		'2017-06-21 11:00:00',
+ 		CASE a.airline_id % 4
+		WHEN 0 then 'Departing'
+   	    WHEN 1 then 'Delayed'
+    	WHEN 2 then 'Arrived'
+     	WHEN 3 then 'Canceled'
+		end,  
+		ceiling(sqrt(char_length(a.airline_name))),
+		ceiling(sqrt(char_length(a.natiONality))),
+		a.airline_id
+FROM airlines as a
+WHERE a.airline_id BETWEEN 1 AND 10;
+---------------3------------
+update flights 
+set airline_id=1
+where status='Arrived';
+---------------4------------
+UPDATE tickets
+SET tickets.price = tickets.price*1.5 
+WHERE tickets.flight_id IN 
+     (SELECT f.flight_id 
+	   FROM flights AS f
+       INNER JOIN airlines AS a
+       ON a.airline_id = f.airline_id
+       WHERE a.airline_id = 
+	        (SELECT a.airline_id 
+			FROM airlines AS a
+              WHERE a.rating = (
+			      SELECT MAX(a.rating) FROM airlines AS a)));
+---------------5------------
+select t.ticket_id,t.price,t.class,t.seat
+FROM tickets as t
+order by t.ticket_id asc
+---------------6------------
+select customer_id,CONCAT(first_name,' ',last_name)as full_name,gender
+FROM customers
+order by full_name asc,customer_id asc
+---------------7------------
+select f.flight_id,f.departure_time,f.arrival_time
+FROM flights as f
+where status='Delayed'
+order by f.flight_id asc
+---------------8------------
+select DISTINCT a.airline_id,a.airline_name,a.natiONality,a.rating
+FROM airlines as a
+JOIN flights as f
+ON a.airline_id=f.airline_id
+order by a.rating desc,a.airline_id
+limit 5
+---------------9------------
+select t.ticket_id,a.airport_name as destinatiON,CONCAT(c.first_name,' ',c.last_name)as customer_name
+FROM customers as c
+JOIN tickets as t
+ON c.customer_id=t.customer_id
+JOIN flights as f
+ON t.flight_id=f.flight_id
+JOIN airports as a
+ON a.airport_id=f.destinatiON_airport_id
+where t.class='First' and t.price<5000
+order by t.ticket_id asc;
+
+---------------10------------
+select DISTINCT c.customer_id,CONCAT(c.first_name,' ',c.last_name)as full_name,tn.town_name
+FROM customers as c
+      INNER JOIN tickets as t ON t.customer_id=c.customer_id
+      INNER JOIN flights as f ON f.flight_id=t.flight_id
+      INNER JOIN airports as a ON a.airport_id=f.origin_airport_id
+      INNER JOIN towns as tn ON tn.town_id=a.town_id
+where f.`status`='Departing' and a.town_id=c.home_town_id
+order by c.customer_id
+---------------11------------
+select DISTINCT c.customer_id,
+       CONCAT(c.first_name,' ',c.last_name) as full_name,
+	   TIMESTAMPDIFF(YEAR, c.date_of_birth, '2016-12-31') as age
+FROM customers as c 
+  INNER JOIN tickets as tk ON c.customer_id = tk.customer_id
+  INNER JOIN flights as f ON tk.flight_id = f.flight_id
+where f.`status` = 'Departing' 
+order by age asc,c.customer_id asc;                   
+---------------12------------
+select c.customer_id,
+   CONCAT(c.first_name,' ',c.last_name)as full_name,
+   price as ticket_price,
+   a.airport_name as destinatiON
+FROM customers as c
+  JOIN tickets as t ON t.customer_id=c.customer_id
+  JOIN flights as f ON f.flight_id=t.flight_id
+  JOIN airports as a ON f.destinatiON_airport_id=a.airport_id
+>>>>>>> Stashed changes
 where f.`status`='Delayed'
 order by price desc,c.customer_id asc 
 limit 3;
 ---------------13------------
+<<<<<<< Updated upstream
 select u.nickname,c.title,l.latitude,l.longitude
 from users as u
 join locations as l on u.location_id=l.id
@@ -150,6 +305,22 @@ join tickets as t
 on t.customer_id=c.customer_id
 join flights as f
 on f.flight_id=t.flight_id
+=======
+SELECT * FROM 
+(SELECT f.flight_id , f.departure_time, f.arrival_time, a.airport_name as origin, t.airport_name as destinatiON
+  FROM flights AS f
+  INNER JOIN airports AS a ON f.origin_airport_id = a.airport_id
+  INNER JOIN airports AS t ON f.destinatiON_airport_id = t.airport_id
+  where f.`status` = 'Departing'
+  order by f.departure_time desc
+  limit 5) AS q
+order by q.departure_time, q.flight_id
+---------------14------------
+SELECT DISTINCT c.customer_id,CONCAT(c.first_name,' ',c.last_name)as full_name,TIMESTAMPDIFF(YEAR, c.date_of_birth, '2016-12-31') as age
+FROM customers as c
+    JOIN tickets as t ON t.customer_id=c.customer_id
+    JOIN flights as f ON f.flight_id=t.flight_id
+>>>>>>> Stashed changes
 where status='Arrived' and TIMESTAMPDIFF(YEAR, c.date_of_birth, '2016-12-31') < 21
 order by age desc,c.customer_id asc
 ---------------15------------
@@ -159,6 +330,7 @@ from airports as a
    join tickets as t on f.flight_id=t.flight_id
 where f.status='Departing' 
 group by a.airport_id,a.airport_name
+<<<<<<< Updated upstream
 having count(t.ticket_id) > 0
 order by a.airport_id;
 ---------------16------------
@@ -175,6 +347,32 @@ VALUES (review_content,review_grade , (SELECT a.airline_id FROM airlines AS a WH
 COMMIT;
 END IF;
 ENd;
+=======
+having count(t.ticket_id) > 0 
+order by a.airport_id;
+---------------16------------
+create table custmer_reviews(
+   review_id INT PRIMARY KEY,
+   review_content	varchar(255) NOT NULL ,
+   review_grade INT,
+   airline_id INT	,
+   customer_id	INT,
+   constraint fk_custmer_reviews_airlines foreign key(airline_id) references airlines(airline_id),
+   constraint fk_custmer_reviews_customers foreign key(customer_id) references customers(customer_id)
+);
+
+create table customer_bank_accounts(
+   account_id INT PRIMARY KEY,
+   account_number	varchar(10) UNIQUE NOT NULL ,
+   balance decimal(10,2) NOT NULL,
+   customer_id	INT,
+   constraint fk_customer_bank_accounts_customers foreign key(customer_id) references customers(customer_id)   
+);
+
+
+
+
+>>>>>>> Stashed changes
 ---------------17------------
 CREATE PROCEDURE udp_purchase_ticket(IN customer_id INT, IN flight_id INT, IN ticket_price DECIMAL(8,2), IN class VARCHAR(6), IN seat VARCHAR(5))
 BEGIN
