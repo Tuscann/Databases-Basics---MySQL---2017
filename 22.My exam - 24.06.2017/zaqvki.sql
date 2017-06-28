@@ -138,16 +138,125 @@ WHERE (
 ) > 1
 ORDER BY u.username ASC, u.id ASC;
 ----------------11------------------
-
+SELECT * FROM
+(SELECT c.id, c.name, COUNT(uc.user_id) AS `contestants`
+FROM `contests` AS c
+	LEFT OUTER JOIN `users_contests` AS uc ON uc.contest_id = c.id
+GROUP BY c.id, c.name
+ORDER BY contestants DESC, contestants ASC, c.id ASC
+LIMIT 5) AS  top_five_contests
+ORDER BY top_five_contests.contestants ASC, top_five_contests.id ASC;
 ----------------12------------------
-
+SELECT s.id, u.username, p.name, CONCAT(s.passed_tests, ' / ', p.tests) AS `result`
+FROM `submissions` AS s
+	INNER JOIN `users` AS u ON u.id = s.user_id
+	INNER JOIN `problems` AS p ON p.id = s.problem_id
+WHERE u.id = (
+					SELECT u.id
+					FROM `users` AS u
+						INNER JOIN `users_contests` AS uc ON uc.user_id = u.id
+					GROUP BY u.id
+					ORDER BY COUNT(*) DESC
+					LIMIT 1)
+ORDER BY s.id DESC;
 ----------------13------------------
-
+SELECT c.id, c.name, SUM(p.points) AS maximum_points
+FROM `contests` AS c
+	INNER JOIN `problems` AS p ON p.contest_id = c.id
+GROUP BY c.id, c.name
+ORDER BY maximum_points DESC, c.id ASC;
 ----------------14------------------
-
+SELECT c.id, c.name, COUNT(*) AS `submissions`
+FROM `contests` AS c
+	INNER JOIN `problems` AS p ON p.contest_id = c.id
+	INNER JOIN `submissions` AS s ON s.problem_id = p.id
+WHERE s.user_id IN (
+	SELECT uc.user_id 
+	FROM `users_contests` AS uc
+	WHERE uc.contest_id = c.id)
+GROUP BY c.id, c.name
+ORDER BY `submissions` DESC, c.id ASC;
 ----------------15------------------
+DELIMITER $$
 
+CREATE PROCEDURE `udp_login` (`username` VARCHAR(30), `password` VARCHAR(30))
+BEGIN
+	START TRANSACTION;
+	
+		IF
+			`username` NOT IN (SELECT u.username FROM `users` AS u)
+		THEN
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username does not exists!';
+			ROLLBACK;
+		ELSEIF
+			`password` != (SELECT u.password FROM users AS u WHERE u.username = `username`)
+		THEN
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Password is incorrect!';
+			ROLLBACK;
+		ELSEIF
+			`username` IN (SELECT lin.username FROM `logged_in_users` AS lin)
+		THEN
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'User is already logged in!';
+			ROLLBACK;
+		ELSE
+					INSERT INTO `logged_in_users` (`id`, `username`, `password`, `email`)
+				SELECT u.id, u.username, u.password, u.email
+				FROM `users` AS u
+				WHERE u.username = username;
+			COMMIT;
+		END IF;
+END $$
+
+DELIMITER ;
 ----------------16------------------
+DELIMITER $$
 
+CREATE PROCEDURE `udp_evaluate` (`id` INT)
+BEGIN
+	START TRANSACTION;
+	
+		INSERT INTO `evaluated_submissions` (`id`,`problem`, `user`, `result`)
+		SELECT id, p.name, u.username,
+					CEIL(((CAST(p.points AS DECIMAL(19,4)) / p.tests) * s.passed_tests)) AS `result`
+		FROM `submissions` AS s
+			INNER JOIN `problems` AS p ON p.id = s.problem_id
+			INNER JOIN `users` AS u ON u.id = s.user_id
+		WHERE s.id = id;
+		
+		IF
+			id NOT IN (SELECT s.id FROM `submissions` AS s)
+		THEN
+			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Submission does not exist!';
+			ROLLBACK;
+		ELSE
+			COMMIT;
+		END IF;
+END $$
+
+DELIMITER ;
+
+CALL `udp_evaluate`(1);
 ----------------17------------------
+DELIMITER $$
 
+CREATE TRIGGER `insert_constraints`
+BEFORE INSERT
+ON `problems`
+FOR EACH ROW
+BEGIN
+	IF 
+		new.name NOT LIKE '% %'
+	THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The given name is invalid!';
+	ELSEIF
+		new.points <= 0
+	THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The problem\'s points cannot be less or equal to 0!';
+	ELSEIF
+		new.tests <= 0
+	THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'The problem\'s tests cannot be less or equal to 0!';
+	END IF;
+END $$
+
+DELIMITER ;
