@@ -2,14 +2,16 @@
 CREATE DATABASE minions;
 -- -------------------------2---------
 USE  minions;
-CREATE TABLE minions (
+CREATE TABLE minions
+(
    id int PRIMARY KEY
   ,name VARCHAR(50)
   ,age int
 );
   
-CREATE TABLE towns(
-id int PRIMARY KEY
+CREATE TABLE towns
+(
+  id int PRIMARY KEY
 , name VARCHAR(50)
 );
 -- -------------------3--------------------
@@ -81,12 +83,9 @@ TIMESTAMP
 NOT NULL DEFAULT CURRENT_TIMESTAMP;
 -- -----------11------------------
 ALTER TABLE users MODIFY id BIGINT NOT NULL;
-ALTER TABLE users
-DROP PRIMARY KEY;
-ALTER TABLE users
-ADD CONSTRAINT pk_users PRIMARY KEY(id);
-ALTER TABLE users
-ADD CONSTRAINT uq_username UNIQUE (username);
+ALTER TABLE users DROP PRIMARY KEY;
+ALTER TABLE users ADD CONSTRAINT pk_users PRIMARY KEY(id);
+ALTER TABLE users ADD CONSTRAINT uq_username UNIQUE (username);
 -- -----------12------------------
 CREATE TABLE directors (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -110,7 +109,8 @@ CREATE TABLE categories (
     category_name VARCHAR(30) not null,
     notes BLOB
 );
-insert into categories(id,category_name)values(1,'wi-fi')
+insert into categories(id,category_name)
+values (1,'wi-fi')
 ,(2,'wi-fi')
 ,(3,'wi-fi')
 ,(4,'wi-fi')

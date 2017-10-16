@@ -80,8 +80,7 @@ LIMIT 30
 SELECT country_name,country_code,if(currency_code='EUR','Euro','Not Euro') as currency FROM countries 
 ORDER BY country_name ASC
 -- -----------25---------------
-SELECT country_name,country_code,if(currency_code='EUR','Euro','Not Euro') as currency FROM countries 
-ORDER BY country_name ASC
+select name from characters order by name asc;
 
 
 
